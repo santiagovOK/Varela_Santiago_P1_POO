@@ -7,6 +7,7 @@ Guía de desarrollo con enfoque de construcción desde componentes independiente
 ## Paso 1: Tipos base y dependencias aisladas
 * **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py` (con `libreria_externa.py` como referencia sin modificar)
+* **Clase(s) a crear:** `UnidadMedida`, `Categoria`, `Exportable` (Protocol)
 * **Requerimientos:** R1 (Modelado y encapsulamiento), R4 (Contratos: Protocol)  
 * **Historias de Usuario:** HU-P1-01, HU-P1-04
 
@@ -64,6 +65,7 @@ class Exportable(Protocol):
 ## Paso 2: Vínculo de Composición
 * **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py`
+* **Clase(s) a crear:** `ProductoCategoria`
 * **Requerimientos:** R2 (Relaciones estructurales)  
 * **Historias de Usuario:** HU-P1-02
 
@@ -80,10 +82,8 @@ class ProductoCategoria:
     """Vínculo de composición entre un Producto y una Categoria."""
 
     def __init__(self, categoria: Categoria, es_principal: bool = False) -> None:
-        if not isinstance(categoria, Categoria):
-            raise ValueError("categoria debe ser una instancia de Categoria")
         self._categoria = categoria
-        self._es_principal = bool(es_principal)
+        self._es_principal = es_principal
 
     @property
     def categoria(self) -> Categoria:
@@ -94,7 +94,7 @@ class ProductoCategoria:
         return self._es_principal
 
     def _marcar_principal(self, valor: bool) -> None:
-        self._es_principal = bool(valor)
+        self._es_principal = valor
 
     def __repr__(self) -> str:
         return f"ProductoCategoria(categoria={self._categoria.nombre!r}, es_principal={self._es_principal})"
@@ -110,10 +110,11 @@ class ProductoCategoria:
 ## Paso 3: Clase Abstracta Base (Producto)
 * **Estado:** [Pendiente]
 * **Archivo(s) a modificar:** `catalogo.py`
+* **Clase(s) a crear:** `Producto` (Clase Abstracta)
 * **Requerimientos:** R1 (Modelado y encapsulamiento), R2 (Relaciones estructurales), R3 (Herencia), R4 (Contratos)  
 * **Historias de Usuario:** HU-P1-01, HU-P1-02, HU-P1-03, HU-P1-04
 
-### 3.1 Encapsulamiento y constructor defensivo - [Pendiente]
+### 3.1 Encapsulamiento y constructor defensivo - [Completo]
 * **Objetivo:** Inicializar el estado interno protegido de todo producto y validar las reglas de dominio al construir.
 * **Diseño e idioma Python:**
   - Heredar de `abc.ABC`.
@@ -146,13 +147,59 @@ class ProductoCategoria:
   - Método concreto `def exportar(self) -> str`: satisface estructuralmente el `Protocol` `Exportable`.
 
 ### Implementación del Paso 3
-*(Espacio reservado para código y fundamentación)*
+```python
+from abc import ABC, abstractmethod
+
+
+class Producto(ABC):
+    """Clase abstracta base del catálogo."""
+
+    def __init__(
+        self,
+        nombre: str,
+        precio_base: float,
+        categoria: Categoria,
+        unidad_venta: UnidadMedida | None = None,
+        stock_cantidad: float = 0.0,
+        habilitado: bool = True,
+    ) -> None:
+        if not nombre or not nombre.strip():
+            raise ValueError("El nombre no puede estar vacío.")
+        if precio_base < 0:
+            raise ValueError("El precio base no puede ser negativo.")
+        if stock_cantidad < 0:
+            raise ValueError("El stock no puede ser negativo.")
+
+        self._nombre = nombre.strip()
+        self._precio_base = float(precio_base)
+        self._stock_cantidad = float(stock_cantidad)
+        self._habilitado = habilitado
+        self._unidad_venta = unidad_venta
+        self._clasificaciones: list[ProductoCategoria] = [
+            ProductoCategoria(categoria, es_principal=True)
+        ]
+
+    def habilitar(self) -> None:
+        """Habilita el producto para su venta."""
+        self._habilitado = True
+
+    def deshabilitar(self) -> None:
+        """Deshabilita el producto para su venta."""
+        self._habilitado = False
+```
+
+**Fundamentación de diseño:**
+* **Encapsulamiento y convención Python:** Todos los atributos de instancia se definen protegidos mediante guión bajo simple `_` (`_nombre`, `_precio_base`, etc.). Se descarta el doble guión `__` conforme a la guía de javaísmos, evitando name-mangling innecesario que dificulta la herencia.
+* **Constructor conciso y sin simulación de compilador:** Siguiendo las directrices de `javaismos_guia.md`, se evitan chequeos defensivos manuales con `isinstance(...)` en runtime (delegando la verificación de tipos a los type hints y a `mypy`). En runtime se validan exclusivamente las restricciones de dominio que exige el Requerimiento 1 (nombre no vacío, precio >= 0 y stock >= 0).
+* **Composición garantizada:** Todo producto nace con su primera categoría principal obligatoria, fabricando internamente la primera instancia de `ProductoCategoria(categoria, es_principal=True)` sin que el código cliente deba instanciarla.
+* **Mutación con semántica de dominio:** En lugar de exponer un setter indiscriminado para `_habilitado`, se ofrecen métodos explícitos con intención de dominio: `habilitar()` y `deshabilitar()`.
 
 ---
 
 ## Paso 4: Subclases de Venta
 * **Estado:** [Pendiente]
 * **Archivo(s) a modificar:** `catalogo.py`
+* **Clase(s) a crear:** `ProductoSimple`, `ProductoPorPeso`, `ProductoCombo`
 * **Requerimientos:** R2 (Agregación), R3 (Herencia y polimorfismo)  
 * **Historias de Usuario:** HU-P1-02, HU-P1-03
 
@@ -187,6 +234,7 @@ class ProductoCategoria:
 ## Paso 5: Rediseño de Producto Destacado
 * **Estado:** [Pendiente]
 * **Archivo(s) a modificar:** `catalogo.py`
+* **Clase(s) a crear:** A definir según rediseño (Opción A: ninguna, Opción B: `Destacado`)
 * **Requerimientos:** R3 (Herencia justificada por dominio)  
 * **Historias de Usuario:** HU-P1-05
 
@@ -207,6 +255,7 @@ class ProductoCategoria:
 ## Paso 6: Función Exportadora
 * **Estado:** [Pendiente]
 * **Archivo(s) a modificar:** `catalogo.py`
+* **Clase(s) a crear:** Ninguna (se crea la función independiente `exportar_catalogo`)
 * **Requerimientos:** R4 (Contratos: Protocol vs ABC)  
 * **Historias de Usuario:** HU-P1-04
 
@@ -224,6 +273,7 @@ class ProductoCategoria:
 ## Paso 7: Modelado UML y Demo Ejecutable
 * **Estado:** [Pendiente]
 * **Archivo(s) a modificar:** `uml/modelo_final.md` y `main.py`
+* **Clase(s) a crear:** Ninguna (script ejecutable `main.py` y diagrama UML)
 * **Requerimientos:** R5 (Diagrama UML final y demo ejecutable)  
 * **Historias de Usuario:** Criterios generales y preguntas de defensa (sección 6.3)
 
