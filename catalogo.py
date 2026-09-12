@@ -110,6 +110,48 @@ class Producto(ABC):
                 return pc.categoria
         raise RuntimeError("Invariante violado: el producto no posee categoría principal.")
 
+    @property
+    def nombre(self) -> str:
+        """Nombre del producto (solo lectura)."""
+        return self._nombre
+
+    @property
+    def precio_base(self) -> float:
+        """Precio base del producto (solo lectura)."""
+        return self._precio_base
+
+    @property
+    def unidad_venta(self) -> UnidadMedida | None:
+        """Unidad de medida para la venta (solo lectura, puede ser None)."""
+        return self._unidad_venta
+
+    @property
+    def disponible(self) -> bool:
+        """Estado derivado: True si está habilitado y posee stock mayor a cero."""
+        return self._habilitado and self._stock_cantidad > 0
+
+    @property
+    def precio_publicado(self) -> str:
+        """Precio formateado para exhibición con dos decimales y unidad si aplica."""
+        if self._unidad_venta is not None:
+            return f"$ {self._precio_base:.2f} / {self._unidad_venta.simbolo}"
+        return f"$ {self._precio_base:.2f}"
+
+    @abstractmethod
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final para una cantidad dada.
+        
+        Debe ser implementado por cada subclase concreta.
+        """
+        ...
+
+    def exportar(self) -> str:
+        """Exporta el producto con formato para el punto de venta.
+        
+        Satisface el contrato estructural del Protocol Exportable sin acoplamiento.
+        """
+        return f"{self._nombre} | {self.precio_publicado} | {self.categoria_principal().nombre}"
+
 
 class Exportable(Protocol):
     def exportar(self) -> str:

@@ -108,7 +108,7 @@ class ProductoCategoria:
 ---
 
 ## Paso 3: Clase Abstracta Base (Producto)
-* **Estado:** [Pendiente]
+* **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py`
 * **Clase(s) a crear:** `Producto` (Clase Abstracta)
 * **Requerimientos:** R1 (Modelado y encapsulamiento), R2 (Relaciones estructurales), R3 (Herencia), R4 (Contratos)  
@@ -132,15 +132,15 @@ class ProductoCategoria:
   - Retorno protegido: `categorias()` devuelve `tuple[ProductoCategoria, ...]` (copia inmutable defensiva).
   - Método `categoria_principal() -> Categoria` que devuelve la categoría principal, no el vínculo.
 
-### 3.3 Properties de estado y formato - [Pendiente]
+### 3.3 Properties de estado y formato - [Completo]
 * **Objetivo:** Exponer datos derivados y calculados sin exponer el estado interno.
 * **Diseño e idioma Python:**
-  - `@property def nombre(self) -> str` y `@property def precio_base(self) -> float`: solo lectura.
-  - `@property def unidad_venta(self) -> UnidadMedida | None`: solo lectura.
+  - `@property def nombre(self) -> str` y `@property def precio_base(self) -> float`: solo lectura sin setters.
+  - `@property def unidad_venta(self) -> UnidadMedida | None`: solo lectura sin setters.
   - `@property def disponible(self) -> bool`: estado derivado (`self._habilitado and self._stock_cantidad > 0`).
   - `@property def precio_publicado(self) -> str`: formateado como `f"$ {self._precio_base:.2f} / {self._unidad_venta.simbolo}"` si tiene unidad, o `f"$ {self._precio_base:.2f}"` si es `None`.
 
-### 3.4 Contratos: Polimorfismo y Exportación - [Pendiente]
+### 3.4 Contratos: Polimorfismo y Exportación - [Completo]
 * **Objetivo:** Definir el contrato abstracto de cálculo y cumplir con la exportación.
 * **Diseño e idioma Python:**
   - `@abstractmethod def precio_final(self, cantidad: float) -> float`: garantiza fallo temprano al instanciar (`TypeError`) si no se implementa en las subclases.
@@ -214,6 +214,48 @@ class Producto(ABC):
             if pc.es_principal:
                 return pc.categoria
         raise RuntimeError("Invariante violado: el producto no posee categoría principal.")
+
+    @property
+    def nombre(self) -> str:
+        """Nombre del producto (solo lectura)."""
+        return self._nombre
+
+    @property
+    def precio_base(self) -> float:
+        """Precio base del producto (solo lectura)."""
+        return self._precio_base
+
+    @property
+    def unidad_venta(self) -> UnidadMedida | None:
+        """Unidad de medida para la venta (solo lectura, puede ser None)."""
+        return self._unidad_venta
+
+    @property
+    def disponible(self) -> bool:
+        """Estado derivado: True si está habilitado y posee stock mayor a cero."""
+        return self._habilitado and self._stock_cantidad > 0
+
+    @property
+    def precio_publicado(self) -> str:
+        """Precio formateado para exhibición con dos decimales y unidad si aplica."""
+        if self._unidad_venta is not None:
+            return f"$ {self._precio_base:.2f} / {self._unidad_venta.simbolo}"
+        return f"$ {self._precio_base:.2f}"
+
+    @abstractmethod
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final para una cantidad dada.
+        
+        Debe ser implementado por cada subclase concreta.
+        """
+        ...
+
+    def exportar(self) -> str:
+        """Exporta el producto con formato para el punto de venta.
+        
+        Satisface el contrato estructural del Protocol Exportable sin acoplamiento.
+        """
+        return f"{self._nombre} | {self.precio_publicado} | {self.categoria_principal().nombre}"
 ```
 
 **Fundamentación de diseño:**
@@ -223,6 +265,9 @@ class Producto(ABC):
 * **Invariante de clasificación principal:** En todo momento existe exactamente una categoría principal (ni cero ni dos). El cliente no muta vínculos directamente: solicita clasificar mediante `clasificar_en(categoria, es_principal=True)`, y `Producto` desmarca la anterior mediante el método protegido `_marcar_principal(False)`.
 * **Retorno protegido en colecciones:** El método `categorias()` retorna `tuple(self._clasificaciones)`, garantizando que ningún cliente externo pueda usar `.append()` para saltarse las validaciones de composición del producto.
 * **Mutación con semántica de dominio:** En lugar de exponer un setter indiscriminado para `_habilitado`, se ofrecen métodos explícitos con intención de dominio: `habilitar()` y `deshabilitar()`.
+* **Properties idiomáticas vs Getters/Setters de Java:** De acuerdo al Capítulo 2 de la guía de javaísmos, se rechazan métodos artificiales como `get_nombre()`, `get_precio_base()` o `is_disponible()`. Se definen properties `@property` para lectura inmutable (`nombre`, `precio_base`, `unidad_venta`), estado derivado (`disponible`) y formato de presentación (`precio_publicado`). Al no definir `@setter`, cualquier intento de asignación externa produce un `AttributeError` inmediato sin requerir boilerplate defensivo.
+* **Fallo temprano con ABC y @abstractmethod:** Siguiendo el Capítulo 7 de la guía de javaísmos, `Producto` hereda de `ABC` y decora `precio_final` con `@abstractmethod`. Esto garantiza que Python impida instanciar directamente `Producto` o cualquier subclase que omita su implementación, lanzando `TypeError` en el momento de la construcción en lugar de un `AttributeError` tardío.
+* **Tipado estructural con Protocol (Duck Typing) sin acoplamiento:** Para la exportación al punto de venta (Requerimiento 4), `Producto` implementa el método `exportar() -> str` pero **NO** hereda explícitamente de `Exportable`. Satisface el contrato estructuralmente. Esto desacopla totalmente el catálogo de librerías externas cerradas como `FichaPuntoDeVenta` (que tampoco hereda de `Exportable`), permitiendo polimorfismo puro sin necesidad de adaptadores artificiales (Design Patterns clásicos de Java).
 
 ---
 
