@@ -26,3 +26,7 @@ Thumbs.db
 # garantiza reproducibilidad (poetry lock), que es uno de los objetivos del proyecto.
 
 assets/__pycache__/
+
+test_*.py
+tests/
+test/

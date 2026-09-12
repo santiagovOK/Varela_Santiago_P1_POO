@@ -62,12 +62,12 @@ class Exportable(Protocol):
 ---
 
 ## Paso 2: Vínculo de Composición
-* **Estado:** [Pendiente]
+* **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py`
 * **Requerimientos:** R2 (Relaciones estructurales)  
 * **Historias de Usuario:** HU-P1-02
 
-### 2.1 `ProductoCategoria` - [Pendiente]
+### 2.1 `ProductoCategoria` - [Completo]
 * **Objetivo:** Clase intermedia que materializa la relación de composición entre un producto y una categoría, con estado propio `_es_principal`.
 * **Diseño e idioma Python:**
   - Encapsular `_categoria: Categoria` y `_es_principal: bool`.
@@ -75,7 +75,35 @@ class Exportable(Protocol):
   - Método protegido o de dominio (ej. `_marcar_principal(valor: bool)`) invocado únicamente por `Producto`, o reemplazo inmutable. El código cliente jamás debe instanciar esta clase directamente.
 
 ### Implementación del Paso 2
-*(Espacio reservado para código y fundamentación)*
+```python
+class ProductoCategoria:
+    """Vínculo de composición entre un Producto y una Categoria."""
+
+    def __init__(self, categoria: Categoria, es_principal: bool = False) -> None:
+        if not isinstance(categoria, Categoria):
+            raise ValueError("categoria debe ser una instancia de Categoria")
+        self._categoria = categoria
+        self._es_principal = bool(es_principal)
+
+    @property
+    def categoria(self) -> Categoria:
+        return self._categoria
+
+    @property
+    def es_principal(self) -> bool:
+        return self._es_principal
+
+    def _marcar_principal(self, valor: bool) -> None:
+        self._es_principal = bool(valor)
+
+    def __repr__(self) -> str:
+        return f"ProductoCategoria(categoria={self._categoria.nombre!r}, es_principal={self._es_principal})"
+```
+
+**Fundamentación de diseño:**
+* **Composición y encapsulamiento:** El objeto `ProductoCategoria` no tiene razón de existir de forma independiente en el negocio; solo tiene sentido como parte constitutiva del ciclo de vida de un `Producto`.
+* **Inmutabilidad hacia el cliente:** Las properties `categoria` y `es_principal` son de solo lectura (sin `@es_principal.setter`), impidiendo que código cliente modifique el estado de la clasificación directamente desde afuera.
+* **Control de invariante:** El método `_marcar_principal` tiene visibilidad protegida (guión bajo inicial) para ser invocado exclusivamente por la clase dueña de la composición (`Producto`), permitiendo mantener el invariante de exactamente una clasificación principal sin exponer setters públicos.
 
 ---
 
