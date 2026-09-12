@@ -9,7 +9,7 @@
 
 **Link al repositorio en Github:**
 
-**- Video explicativo:**
+**- [Video explicativo](/link_video.txt)**
 **- Video explicativo (link B):**
 
 **- Presentación utilizada en el video:**
