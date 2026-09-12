@@ -123,7 +123,7 @@ class ProductoCategoria:
   - Validación de dominio: `nombre` no vacío, `precio_base >= 0`, `stock_cantidad >= 0`. Lanzar `ValueError` si alguna no se cumple.
   - Métodos mutadores con intención de dominio: `habilitar()` y `deshabilitar()`.
 
-### 3.2 Composición e invariante de clasificación principal - [Pendiente]
+### 3.2 Composición e invariante de clasificación principal - [Completo]
 * **Objetivo:** Administrar el ciclo de vida de los vínculos `ProductoCategoria` garantizando que siempre haya exactamente una categoría principal.
 * **Diseño e idioma Python:**
   - El constructor recibe la categoría principal obligatoria y fabrica internamente el primer vínculo con `es_principal=True`.
@@ -186,12 +186,42 @@ class Producto(ABC):
     def deshabilitar(self) -> None:
         """Deshabilita el producto para su venta."""
         self._habilitado = False
+
+    def clasificar_en(self, categoria: Categoria, es_principal: bool = False) -> None:
+        """Agrega una clasificación adicional al producto.
+
+        Si es_principal es True, la clasificación que era principal deja de serlo.
+        Clasificar dos veces en la misma categoría lanza ValueError.
+        """
+        for pc in self._clasificaciones:
+            if pc.categoria == categoria:
+                raise ValueError(f"El producto ya está clasificado en la categoría '{categoria.nombre}'.")
+
+        if es_principal:
+            for pc in self._clasificaciones:
+                if pc.es_principal:
+                    pc._marcar_principal(False)
+
+        self._clasificaciones.append(ProductoCategoria(categoria, es_principal=es_principal))
+
+    def categorias(self) -> tuple[ProductoCategoria, ...]:
+        """Retorna las clasificaciones del producto como tupla inmutable defensiva."""
+        return tuple(self._clasificaciones)
+
+    def categoria_principal(self) -> Categoria:
+        """Retorna la Categoria principal del producto (no el vínculo)."""
+        for pc in self._clasificaciones:
+            if pc.es_principal:
+                return pc.categoria
+        raise RuntimeError("Invariante violado: el producto no posee categoría principal.")
 ```
 
 **Fundamentación de diseño:**
 * **Encapsulamiento y convención Python:** Todos los atributos de instancia se definen protegidos mediante guión bajo simple `_` (`_nombre`, `_precio_base`, etc.). Se descarta el doble guión `__` conforme a la guía de javaísmos, evitando name-mangling innecesario que dificulta la herencia.
 * **Constructor conciso y sin simulación de compilador:** Siguiendo las directrices de `javaismos_guia.md`, se evitan chequeos defensivos manuales con `isinstance(...)` en runtime (delegando la verificación de tipos a los type hints y a `mypy`). En runtime se validan exclusivamente las restricciones de dominio que exige el Requerimiento 1 (nombre no vacío, precio >= 0 y stock >= 0).
 * **Composición garantizada:** Todo producto nace con su primera categoría principal obligatoria, fabricando internamente la primera instancia de `ProductoCategoria(categoria, es_principal=True)` sin que el código cliente deba instanciarla.
+* **Invariante de clasificación principal:** En todo momento existe exactamente una categoría principal (ni cero ni dos). El cliente no muta vínculos directamente: solicita clasificar mediante `clasificar_en(categoria, es_principal=True)`, y `Producto` desmarca la anterior mediante el método protegido `_marcar_principal(False)`.
+* **Retorno protegido en colecciones:** El método `categorias()` retorna `tuple(self._clasificaciones)`, garantizando que ningún cliente externo pueda usar `.append()` para saltarse las validaciones de composición del producto.
 * **Mutación con semántica de dominio:** En lugar de exponer un setter indiscriminado para `_habilitado`, se ofrecen métodos explícitos con intención de dominio: `habilitar()` y `deshabilitar()`.
 
 ---

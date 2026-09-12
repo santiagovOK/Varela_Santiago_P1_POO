@@ -82,6 +82,34 @@ class Producto(ABC):
         """Deshabilita el producto para su venta."""
         self._habilitado = False
 
+    def clasificar_en(self, categoria: Categoria, es_principal: bool = False) -> None:
+        """Agrega una clasificación adicional al producto.
+
+        Si es_principal es True, la clasificación que era principal deja de serlo.
+        Clasificar dos veces en la misma categoría lanza ValueError.
+        """
+        for pc in self._clasificaciones:
+            if pc.categoria == categoria:
+                raise ValueError(f"El producto ya está clasificado en la categoría '{categoria.nombre}'.")
+
+        if es_principal:
+            for pc in self._clasificaciones:
+                if pc.es_principal:
+                    pc._marcar_principal(False)
+
+        self._clasificaciones.append(ProductoCategoria(categoria, es_principal=es_principal))
+
+    def categorias(self) -> tuple[ProductoCategoria, ...]:
+        """Retorna las clasificaciones del producto como tupla inmutable defensiva."""
+        return tuple(self._clasificaciones)
+
+    def categoria_principal(self) -> Categoria:
+        """Retorna la Categoria principal del producto (no el vínculo)."""
+        for pc in self._clasificaciones:
+            if pc.es_principal:
+                return pc.categoria
+        raise RuntimeError("Invariante violado: el producto no posee categoría principal.")
+
 
 class Exportable(Protocol):
     def exportar(self) -> str:
