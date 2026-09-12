@@ -1,0 +1,28 @@
+# ===== Entorno virtual=====
+.venv/
+
+# ===== Bytecode y caché de Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ===== Artículos de empaque (opcionales) =====
+*.egg-info/
+*.dist-info/
+build/
+dist/
+
+# ===== Cachés de herramientas de test/lint (hacia adelante) =====
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ===== Ruido de editor / sistema operativo =====
+.DS_Store
+Thumbs.db
+
+# ===== NO ignorar a propósito =====
+# pyproject.toml y poetry.lock se mantienen TRACKED: el lockfile
+# garantiza reproducibilidad (poetry lock), que es uno de los objetivos del proyecto.
+
+assets/__pycache__/
