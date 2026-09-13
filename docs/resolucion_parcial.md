@@ -272,23 +272,23 @@ class Producto(ABC):
 ---
 
 ## Paso 4: Subclases de Venta
-* **Estado:** [Pendiente]
+* **Estado:** [En progreso]
 * **Archivo(s) a modificar:** `catalogo.py`
 * **Clase(s) a crear:** `ProductoSimple`, `ProductoPorPeso`, `ProductoCombo`
 * **Requerimientos:** R2 (Agregación), R3 (Herencia y polimorfismo)  
 * **Historias de Usuario:** HU-P1-02, HU-P1-03
 
-### 4.1 `ProductoSimple` (Venta por pieza) - [Pendiente]
+### 4.1 `ProductoSimple` (Venta por pieza) - [Completo]
 * **Objetivo:** Venta unitaria de artículos.
 * **Diseño e idioma Python:**
-  - Invocar `super().__init__(...)`.
+  - Herencia directa de `__init__`: no redefine el constructor, heredando la inicialización y validaciones completas de `Producto`.
   - Implementar `precio_final(cantidad: float) -> float`: valida que `cantidad` sea de valor entero y `>= 1` (ej. `3` o `3.0` válido, `2.5` lanza `ValueError`).
   - Fórmula: `precio_base * cantidad`.
 
-### 4.2 `ProductoPorPeso` (Venta a granel) - [Pendiente]
+### 4.2 `ProductoPorPeso` (Venta a granel) - [Completo]
 * **Objetivo:** Venta pesable donde la cantidad admite decimales.
 * **Diseño e idioma Python:**
-  - Invocar `super().__init__(...)`.
+  - Herencia directa de `__init__`: no redefine el constructor, heredando la inicialización y validaciones completas de `Producto`.
   - Implementar `precio_final(cantidad: float) -> float`: valida `cantidad > 0` (admite decimales como `0.250`).
   - Fórmula: `round(precio_base * cantidad, 2)` (única subclase que redondea explícitamente a 2 decimales).
 
@@ -302,7 +302,43 @@ class Producto(ABC):
   - Implementar `precio_final(cantidad: float) -> float`: valida cantidad entera `>= 1`. Fórmula: `(suma de componente.precio_final(1)) * (1 - descuento) * cantidad`. Soporta anidamiento recursivo de combos polimórficamente.
 
 ### Implementación del Paso 4
-*(Espacio reservado para código y fundamentación)*
+```python
+class ProductoSimple(Producto):
+    """Producto que se vende por unidad o pieza entera."""
+
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final para una cantidad entera de piezas (>= 1)."""
+        try:
+            if type(cantidad) is bool or int(cantidad) != cantidad or cantidad < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"La cantidad para ProductoSimple debe ser un valor entero >= 1, recibido: {cantidad}"
+            )
+        return self._precio_base * cantidad
+
+
+class ProductoPorPeso(Producto):
+    """Producto que se vende a granel por masa o medida continua."""
+
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final para una cantidad continua > 0, redondeado a 2 decimales."""
+        try:
+            if type(cantidad) is bool or cantidad <= 0:
+                raise ValueError
+            return round(self._precio_base * float(cantidad), 2)
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"La cantidad para ProductoPorPeso debe ser un número > 0, recibido: {cantidad}"
+            )
+```
+
+**Fundamentación de diseño:**
+* **Herencia idiomática de constructores vs javaísmo de reenvío:** En Java los constructores no se heredan, lo que obliga al programador a declarar un constructor idéntico en cada subclase exclusivamente para hacer `super(nombre, precio, ...)`. En Python, por el contrario, los métodos (incluido `__init__`) se heredan naturalmente vía el MRO. Cuando una subclase no incorpora nuevos atributos de instancia ni altera el proceso de inicialización (como ocurre con `ProductoSimple` y `ProductoPorPeso`, que solo refinan el cálculo de `precio_final`), redeclarar `__init__` es una ceremonia vacía y un vicio de Java. Omitir el constructor en estas subclases respeta el principio DRY y coincide con el diagrama UML de las consignas, donde ninguna de las dos declara atributos ni constructor.
+* **Cuándo sí se debe redefinir `__init__`:** Únicamente cuando la subclase incorpora atributos propios que la superclase desconoce (como en `ProductoCombo`, que agregará `#_componentes` y `#_descuento`). En esos casos puntuales, la regla de `javaismos_guia.md` exige que la primera línea invoque explícitamente a `super().__init__(...)` para asegurar que el estado base quede inicializado.
+* **Validación de cantidad idiomática sin `isinstance`:** En lugar de simular un chequeo de tipos estático con `isinstance(cantidad, (int, float))` (javaísmo de compilador), se aplica una validación de dominio limpia bajo la filosofía **EAFP** (Easier to Ask for Forgiveness than Permission). En `ProductoSimple` se exige un valor numérico entero $\ge 1$, mientras que en `ProductoPorPeso` se admiten magnitudes continuas fraccionarias $> 0$ (como `0.250` kg). En ambos casos, tipos incompatibles o valores booleanos disparan `ValueError` sin requerir introspección pesada.
+* **Redondeo explícito exclusivo:** De acuerdo a las consignas, `ProductoPorPeso` es la única subclase que redondea explícitamente a 2 decimales (`round(..., 2)`) para reflejar transacciones continuas por peso sin acumular residuos de coma flotante.
+* **Polimorfismo puro:** Ambas clases concretas proveen sus respectivas implementaciones del método abstracto `precio_final(cantidad)`, cumpliendo el contrato de `Producto` sin necesidad de anotaciones artificiales como `@Override`.
 
 ---
 

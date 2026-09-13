@@ -153,6 +153,36 @@ class Producto(ABC):
         return f"{self._nombre} | {self.precio_publicado} | {self.categoria_principal().nombre}"
 
 
+class ProductoSimple(Producto):
+    """Producto que se vende por unidad o pieza entera."""
+
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final para una cantidad entera de piezas (>= 1)."""
+        try:
+            if type(cantidad) is bool or int(cantidad) != cantidad or cantidad < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"La cantidad para ProductoSimple debe ser un valor entero >= 1, recibido: {cantidad}"
+            )
+        return self._precio_base * cantidad
+
+
+class ProductoPorPeso(Producto):
+    """Producto que se vende a granel por masa o medida continua."""
+
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final para una cantidad continua > 0, redondeado a 2 decimales."""
+        try:
+            if type(cantidad) is bool or cantidad <= 0:
+                raise ValueError
+            return round(self._precio_base * float(cantidad), 2)
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"La cantidad para ProductoPorPeso debe ser un número > 0, recibido: {cantidad}"
+            )
+
+
 class Exportable(Protocol):
     def exportar(self) -> str:
         ...
