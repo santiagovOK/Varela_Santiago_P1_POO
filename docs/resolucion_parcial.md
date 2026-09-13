@@ -416,23 +416,99 @@ class ProductoCombo(Producto):
 ---
 
 ## Paso 5: Rediseño de Producto Destacado
-* **Estado:** [Pendiente]
+* **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py`
-* **Clase(s) a crear:** A definir según rediseño (Opción A: ninguna, Opción B: `Destacado`)
+* **Clase(s) a crear:** Ninguna (se elimina `ProductoDestacado` del modelo y se enriquece la clase base `Producto`)
 * **Requerimientos:** R3 (Herencia justificada por dominio)  
 * **Historias de Usuario:** HU-P1-05
 
-### 5.1 Análisis crítico de la herencia ("es-un") - [Pendiente]
-* **Objetivo:** Evaluar por qué "ser destacado" no es una especialización de venta sino un estado/rol promocional de cualquier producto.
-* **Fundamentación:** Con herencia, un `ProductoDestacado` no podría a la vez ser `ProductoPorPeso` o `ProductoCombo` sin herencia múltiple compleja o explosión combinatoria de clases.
+### 5.1 Análisis crítico de la herencia ("es-un") - [Resuelto]
+* **Objetivo:** Analizar la pertinencia de la herencia según el criterio «es-un» del dominio y justificar por qué se descarta la clase `ProductoDestacado` como subclase de `Producto`.
+* **Resolución y Justificación de Dominio (HU-P1-05):**
+  - **Decisión:** Se descarta la herencia modelada en el diagrama preliminar (`Producto <|-- ProductoDestacado : herencia a revisar`). `ProductoDestacado` no formará parte de la jerarquía de clases.
+  - **Criterio «es-un»:** La herencia legítima en el dominio del catálogo modela la modalidad de venta y cálculo económico (`ProductoSimple` por unidad entera, `ProductoPorPeso` por masa continua y `ProductoCombo` por agregación promocional). Un producto *es un* producto simple, o *es un* producto por peso, o *es un* combo.
+  - **Confusión entre identidad y rol temporal:** "Estar destacado" no es una especialización intrínseca de lo que el producto es, ni define cómo se calcula su precio. Es un **rol o estado promocional transitorio en runtime** (una posición asignada en la vidriera de la tienda). Como explica el Capítulo 6 y 7 de `javaismos_guia.md`, en Java la herencia suele usarse para darle un tipo común al compilador; en Python esa ceremonia es innecesaria y perjudicial.
+  - **Ausencia de regla de precio:** Como `Producto` es abstracta con `@abstractmethod def precio_final(self, cantidad: float) -> float`, mantener `ProductoDestacado` como subclase obligaría a asignarle un algoritmo de cálculo propio, pero la tabla de requerimientos no define ningún precio para destacados porque un producto en vidriera cobra según su tipo de venta (por unidad, por peso o combo).
+  - **Imposibilidad del cruce de jerarquías:** En herencia simple, un producto por peso o un combo no podría estar destacado sin recurrir a herencia múltiple compleja o a una explosión combinatoria de clases (`ProductoSimpleDestacado`, `ProductoPorPesoDestacado`, `ProductoComboDestacado`), lo cual constituye un grave antipatrón de diseño.
+  - **Rigidez estática:** La herencia es fija al momento de instanciar. Si un producto entra y sale de la vidriera comercial entre semanas, con herencia se requeriría mutar la clase del objeto en memoria (`__class__`) o destruir y recrear la instancia.
 
-### 5.2 Implementación del rediseño - [Pendiente]
-* **Objetivo:** Materializar la alternativa elegida:
-  - **Opción A:** Atributo opcional `_orden_vidriera: int | None = None` en `Producto` base con property de lectura y método `destacar(orden: int)`.
-  - **Opción B:** Objeto `Destacado` por composición/asociación externa.
+### 5.2 Implementación del rediseño (Alternativa A: `_orden_vidriera` en `Producto`) - [Completo]
+* **Objetivo:** Materializar la solución desacoplada mediante un rol/estado dinámico en la clase base `Producto`.
+* **Resolución técnica y respuestas a la consigna (HU-P1-05):**
+  - **¿Con qué se reemplaza la herencia?:** Se reemplaza por un atributo de estado/rol opcional (`_orden_vidriera: int | None`) y métodos con semántica de dominio explícita en la clase base `Producto`.
+  - **¿Dónde vive `_orden_vidriera`?:** Vive directamente encapsulado en la clase base `Producto`. Nace por defecto en `None` (o configurable opcionalmente en el constructor).
+  - **Properties de solo lectura:**
+    - `@property def orden_vidriera(self) -> int | None`: expone el número de orden en vidriera o `None`.
+    - `@property def es_destacado(self) -> bool`: estado derivado que retorna `self._orden_vidriera is not None`.
+  - **Métodos de mutación con semántica de dominio:**
+    - `def destacar(self, orden: int) -> None`: valida que `orden` sea un valor entero $\ge 1$ (disparando `ValueError` mediante EAFP ante valores inválidos o booleanos) y fija `self._orden_vidriera = int(orden)`.
+    - `def quitar_destacado(self) -> None`: restablece `self._orden_vidriera = None`.
+  - **¿Qué productos del catálogo pueden destacarse con tu diseño?:** **Todos los productos del catálogo**. Tanto `ProductoSimple`, como `ProductoPorPeso` y `ProductoCombo` heredan esta capacidad de `Producto`. Cualquier producto puede ingresar o salir de la vidriera en tiempo de ejecución sin cambiar de clase ni alterar su identidad.
+  - **¿Qué regla de `precio_final(cantidad)` tiene?:** No introduce ninguna regla nueva ni artificial. Cada producto conserva su propia implementación polimórfica según su modalidad de venta (`ProductoSimple` por unidad, `ProductoPorPeso` por peso con redondeo a 2 decimales, `ProductoCombo` con descuento sobre la suma de componentes).
 
 ### Implementación del Paso 5
-*(Espacio reservado para código y fundamentación)*
+```python
+# Modificaciones consolidadas en Producto (catalogo.py):
+
+class Producto(ABC):
+    """Clase base abstracta para todos los productos comercializados en el catálogo."""
+
+    def __init__(
+        self,
+        nombre: str,
+        precio_base: float,
+        categoria: Categoria,
+        unidad_venta: UnidadMedida | None = None,
+        stock: float = 0.0,
+        habilitado: bool = True,
+        orden_vidriera: int | None = None,
+    ) -> None:
+        # Validaciones de invariantes previas...
+        # Validación de orden_vidriera (rol opcional de destacado):
+        if orden_vidriera is not None:
+            try:
+                if type(orden_vidriera) is bool or int(orden_vidriera) != orden_vidriera or orden_vidriera < 1:
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"El orden_vidriera debe ser un entero >= 1 o None, recibido: {orden_vidriera}"
+                )
+            self._orden_vidriera: int | None = int(orden_vidriera)
+        else:
+            self._orden_vidriera = None
+
+        # Inicializaciones restantes...
+
+    @property
+    def orden_vidriera(self) -> int | None:
+        """Número de orden en la vidriera comercial, o None si no está destacado."""
+        return self._orden_vidriera
+
+    @property
+    def es_destacado(self) -> bool:
+        """Estado derivado: True si el producto tiene asignado un orden en vidriera."""
+        return self._orden_vidriera is not None
+
+    def destacar(self, orden: int) -> None:
+        """Asigna un número de orden en vidriera >= 1 marcando al producto como destacado."""
+        try:
+            if type(orden) is bool or int(orden) != orden or orden < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"El orden de vidriera debe ser un entero >= 1, recibido: {orden}"
+            )
+        self._orden_vidriera = int(orden)
+
+    def quitar_destacado(self) -> None:
+        """Remueve al producto de la vidriera comercial."""
+        self._orden_vidriera = None
+```
+
+**Fundamentación de diseño del Paso 5:**
+* **Eliminación de herencia espuria:** Descartar `ProductoDestacado` como subclase corrige el acoplamiento rígido y resuelve el problema de modelar un estado transitorio con herencia estructural.
+* **Cohesión y extensibilidad:** Al situar el rol opcional en la clase base abstracta `Producto`, cualquier producto concreto (`ProductoSimple`, `ProductoPorPeso` o `ProductoCombo`) puede destacarse en la vidriera en tiempo de ejecución sin duplicar código ni alterar la lógica económica de cálculo de precios.
+* **Validación idiomática EAFP:** La asignación del orden de vidriera valida estrictamente que sea un entero $\ge 1$, rechazando booleanos y valores no numéricos con `ValueError`, manteniendo consistencia con las validaciones del resto del dominio.
 
 ---
 

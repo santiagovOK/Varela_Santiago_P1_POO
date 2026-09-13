@@ -57,6 +57,7 @@ class Producto(ABC):
         unidad_venta: UnidadMedida | None = None,
         stock_cantidad: float = 0.0,
         habilitado: bool = True,
+        orden_vidriera: int | None = None, # Parte de la Resolución obligatoria de ProductoDestacado
     ) -> None:
         if not nombre or not nombre.strip():
             raise ValueError("El nombre no puede estar vacío.")
@@ -65,14 +66,41 @@ class Producto(ABC):
         if stock_cantidad < 0:
             raise ValueError("El stock no puede ser negativo.")
 
+        # Parte de la Resolución obligatoria de ProductoDestacado
+        if orden_vidriera is not None:
+            try:
+                if type(orden_vidriera) is bool or int(orden_vidriera) != orden_vidriera or orden_vidriera < 1:
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"El orden de vidriera debe ser un valor entero >= 1, recibido: {orden_vidriera}"
+                )
+
         self._nombre = nombre.strip()
         self._precio_base = float(precio_base)
         self._stock_cantidad = float(stock_cantidad)
         self._habilitado = habilitado
         self._unidad_venta = unidad_venta
+        self._orden_vidriera: int | None = int(orden_vidriera) if orden_vidriera is not None else None # Parte de la Resolución obligatoria de ProductoDestacado
         self._clasificaciones: list[ProductoCategoria] = [
             ProductoCategoria(categoria, es_principal=True)
         ]
+
+    # Parte de la Resolución obligatoria de ProductoDestacado
+    def destacar(self, orden: int) -> None:
+        """Asigna al producto un lugar en la vidriera promocional (entero >= 1)."""
+        try:
+            if type(orden) is bool or int(orden) != orden or orden < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"El orden de vidriera debe ser un valor entero >= 1, recibido: {orden}"
+            )
+        self._orden_vidriera = int(orden)
+
+    def quitar_destacado(self) -> None:
+        """Remueve el producto de la vidriera promocional."""
+        self._orden_vidriera = None
 
     def habilitar(self) -> None:
         """Habilita el producto para su venta."""
@@ -137,6 +165,18 @@ class Producto(ABC):
             return f"$ {self.precio_base:.2f} / {self._unidad_venta.simbolo}"
         return f"$ {self.precio_base:.2f}"
 
+    # Parte de la Resolución obligatoria de ProductoDestacado
+    
+    @property
+    def orden_vidriera(self) -> int | None:
+        """Número de orden en vidriera si el producto está destacado, o None."""
+        return self._orden_vidriera
+
+    @property
+    def es_destacado(self) -> bool:
+        """Indica si el producto tiene asignado un lugar destacado en vidriera."""
+        return self._orden_vidriera is not None
+
     @abstractmethod
     def precio_final(self, cantidad: float) -> float:
         """Calcula el precio final para una cantidad dada.
@@ -194,6 +234,7 @@ class ProductoCombo(Producto):
         categoria: Categoria,
         unidad_venta: UnidadMedida | None = None,
         habilitado: bool = True,
+        orden_vidriera: int | None = None, # Parte de la Resolución obligatoria de ProductoDestacado
     ) -> None:
         super().__init__(
             nombre=nombre,
@@ -202,6 +243,7 @@ class ProductoCombo(Producto):
             unidad_venta=unidad_venta,
             stock_cantidad=0.0,
             habilitado=habilitado,
+            orden_vidriera=orden_vidriera, # Parte de la Resolución obligatoria de ProductoDestacado
         )
 
         try:
