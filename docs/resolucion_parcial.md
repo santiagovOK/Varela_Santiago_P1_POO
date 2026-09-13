@@ -272,7 +272,7 @@ class Producto(ABC):
 ---
 
 ## Paso 4: Subclases de Venta
-* **Estado:** [En progreso]
+* **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py`
 * **Clase(s) a crear:** `ProductoSimple`, `ProductoPorPeso`, `ProductoCombo`
 * **Requerimientos:** R2 (Agregación), R3 (Herencia y polimorfismo)  
@@ -292,14 +292,14 @@ class Producto(ABC):
   - Implementar `precio_final(cantidad: float) -> float`: valida `cantidad > 0` (admite decimales como `0.250`).
   - Fórmula: `round(precio_base * cantidad, 2)` (única subclase que redondea explícitamente a 2 decimales).
 
-### 4.3 `ProductoCombo` (Agregación de productos) - [Pendiente]
+### 4.3 `ProductoCombo` (Agregación de productos) - [Completo]
 * **Objetivo:** Agrupar 2..* productos preexistentes con descuento sobre la suma.
 * **Diseño e idioma Python:**
   - Recibe componentes ya construidos (agregación: existen antes y sobreviven al combo).
   - Validación: menos de 2 componentes lanza `ValueError`. Descuento en `[0, 1)`.
   - Retorno protegido: `componentes() -> tuple[Producto, ...]`.
-  - Decisión de dominio para `precio_base` y `stock_cantidad`/`disponible` del combo.
-  - Implementar `precio_final(cantidad: float) -> float`: valida cantidad entera `>= 1`. Fórmula: `(suma de componente.precio_final(1)) * (1 - descuento) * cantidad`. Soporta anidamiento recursivo de combos polimórficamente.
+  - Decisión de dominio para `precio_base` derivado dinámicamente de sus componentes y `disponible` condicionado a la disponibilidad de todos los componentes.
+  - Implementar `precio_final(cantidad: float) -> float`: valida cantidad entera `>= 1`. Fórmula: `(suma de componente.precio_final(1)) * (1 - descuento) * cantidad`. Soporta anidamiento recursivo de combos polimórficamente sin condicionales de tipo.
 
 ### Implementación del Paso 4
 ```python
@@ -331,14 +331,87 @@ class ProductoPorPeso(Producto):
             raise ValueError(
                 f"La cantidad para ProductoPorPeso debe ser un número > 0, recibido: {cantidad}"
             )
+
+
+class ProductoCombo(Producto):
+    """Agrupación de productos promocionales por agregación (R2 y R3)."""
+
+    def __init__(
+        self,
+        nombre: str,
+        componentes: list[Producto] | tuple[Producto, ...],
+        descuento: float,
+        categoria: Categoria,
+        unidad_venta: UnidadMedida | None = None,
+        habilitado: bool = True,
+    ) -> None:
+        super().__init__(
+            nombre=nombre,
+            precio_base=0.0,
+            categoria=categoria,
+            unidad_venta=unidad_venta,
+            stock_cantidad=0.0,
+            habilitado=habilitado,
+        )
+
+        try:
+            componentes_lista = list(componentes)
+        except TypeError:
+            raise ValueError("Los componentes del combo deben proporcionarse en una colección iterable.")
+
+        if len(componentes_lista) < 2:
+            raise ValueError("Un combo debe tener al menos 2 componentes.")
+
+        try:
+            if type(descuento) is bool or not (0.0 <= float(descuento) < 1.0):
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError("El descuento del combo debe estar en el intervalo [0, 1).")
+
+        self._componentes: list[Producto] = list(componentes_lista)
+        self._descuento: float = float(descuento)
+
+    def componentes(self) -> tuple[Producto, ...]:
+        """Retorna los componentes del combo como tupla inmutable defensiva."""
+        return tuple(self._componentes)
+
+    @property
+    def descuento(self) -> float:
+        """Porcentaje de descuento aplicado sobre la suma de componentes (solo lectura)."""
+        return self._descuento
+
+    @property
+    def precio_base(self) -> float:
+        """Precio base derivado dinámicamente de sus componentes con descuento."""
+        return sum(c.precio_final(1) for c in self._componentes) * (1.0 - self._descuento)
+
+    @property
+    def disponible(self) -> bool:
+        """Un combo está disponible si está habilitado y todos sus componentes lo están."""
+        return self._habilitado and all(c.disponible for c in self._componentes)
+
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final aplicando la fórmula con descuento y admitiendo anidamiento."""
+        try:
+            if type(cantidad) is bool or int(cantidad) != cantidad or cantidad < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"La cantidad para ProductoCombo debe ser un valor entero >= 1, recibido: {cantidad}"
+            )
+        return self.precio_base * cantidad
 ```
 
 **Fundamentación de diseño:**
-* **Herencia idiomática de constructores vs javaísmo de reenvío:** En Java los constructores no se heredan, lo que obliga al programador a declarar un constructor idéntico en cada subclase exclusivamente para hacer `super(nombre, precio, ...)`. En Python, por el contrario, los métodos (incluido `__init__`) se heredan naturalmente vía el MRO. Cuando una subclase no incorpora nuevos atributos de instancia ni altera el proceso de inicialización (como ocurre con `ProductoSimple` y `ProductoPorPeso`, que solo refinan el cálculo de `precio_final`), redeclarar `__init__` es una ceremonia vacía y un vicio de Java. Omitir el constructor en estas subclases respeta el principio DRY y coincide con el diagrama UML de las consignas, donde ninguna de las dos declara atributos ni constructor.
-* **Cuándo sí se debe redefinir `__init__`:** Únicamente cuando la subclase incorpora atributos propios que la superclase desconoce (como en `ProductoCombo`, que agregará `#_componentes` y `#_descuento`). En esos casos puntuales, la regla de `javaismos_guia.md` exige que la primera línea invoque explícitamente a `super().__init__(...)` para asegurar que el estado base quede inicializado.
-* **Validación de cantidad idiomática sin `isinstance`:** En lugar de simular un chequeo de tipos estático con `isinstance(cantidad, (int, float))` (javaísmo de compilador), se aplica una validación de dominio limpia bajo la filosofía **EAFP** (Easier to Ask for Forgiveness than Permission). En `ProductoSimple` se exige un valor numérico entero $\ge 1$, mientras que en `ProductoPorPeso` se admiten magnitudes continuas fraccionarias $> 0$ (como `0.250` kg). En ambos casos, tipos incompatibles o valores booleanos disparan `ValueError` sin requerir introspección pesada.
+* **Herencia idiomática de constructores vs javaísmo de reenvío:** En Java los constructores no se heredan, lo que obliga al programador a declarar un constructor idéntico en cada subclase exclusivamente para hacer `super(nombre, precio, ...)`. En Python, por el contrario, los métodos (incluido `__init__`) se heredan naturalmente vía el MRO. Cuando una subclase no incorpora nuevos atributos de instancia ni altera el proceso de inicialización (como ocurre con `ProductoSimple` y `ProductoPorPeso`, que solo refinan el cálculo de `precio_final`), redeclarar `__init__` es una ceremonia vacía y un vicio de Java. Omitir el constructor en estas subclases respeta el principio DRY y coincide con el diagrama UML de las consignas, donde ninguna de las dos declara atributos ni constructor propio.
+* **Cuándo sí se debe redefinir `__init__`:** Únicamente cuando la subclase incorpora atributos propios que la superclase desconoce, como ocurre con `ProductoCombo`, que agrega `_componentes` y `_descuento`. En este caso, la regla de `javaismos_guia.md` exige que se invoque explícitamente a `super().__init__(...)` para inicializar el estado común (`nombre`, `categoria`, etc.).
+* **Relación de Agregación (`1 o-- 2..*`):** A diferencia de la composición de categorías (donde `Producto` fabrica y gestiona el ciclo de vida de `ProductoCategoria`), `ProductoCombo` implementa agregación: recibe componentes ya construidos que existen previamente y que siguen existiendo en el sistema aunque el combo sea eliminado. Para proteger la integridad interna, el constructor realiza una copia defensiva (`list(componentes)`) y el método `componentes()` retorna una tupla inmutable (`tuple(self._componentes)`), impidiendo que mutaciones externas alteren la colección del combo.
+* **Decisiones de dominio para `precio_base` y `disponible`:** Las consignas solicitan decidir cómo tratar estos atributos en un combo:
+  - `precio_base`: No es un valor estático fijado arbitrariamente, sino un estado derivado dinámico calculado como `(suma de componentes) * (1 - descuento)`. Al modificar `Producto.precio_publicado` para que acceda a la property `self.precio_base` en lugar del atributo privado `_precio_base`, el precio publicado del combo se mantiene siempre sincronizado y actualizado ante variaciones de sus componentes.
+  - `disponible`: Un combo no posee inventario físico propio en un depósito; su disponibilidad depende directamente de que esté habilitado y de que **todos** sus componentes estén disponibles (`self._habilitado and all(c.disponible for c in self._componentes)`). Si cualquiera de los productos del combo se queda sin stock o es deshabilitado, el combo pasa automáticamente a no disponible sin requerir sincronizaciones manuales propensas a errores.
+* **Validación de cantidad idiomática sin `isinstance`:** En lugar de simular un chequeo de tipos estático con `isinstance(cantidad, (int, float))` (javaísmo de compilador), se aplica una validación de dominio limpia bajo la filosofía **EAFP** (Easier to Ask for Forgiveness than Permission). En `ProductoSimple` y `ProductoCombo` se exige un valor numérico entero $\ge 1$, mientras que en `ProductoPorPeso` se admiten magnitudes continuas fraccionarias $> 0$ (como `0.250` kg). En todos los casos, tipos incompatibles o valores booleanos disparan `ValueError` sin requerir introspección pesada.
 * **Redondeo explícito exclusivo:** De acuerdo a las consignas, `ProductoPorPeso` es la única subclase que redondea explícitamente a 2 decimales (`round(..., 2)`) para reflejar transacciones continuas por peso sin acumular residuos de coma flotante.
-* **Polimorfismo puro:** Ambas clases concretas proveen sus respectivas implementaciones del método abstracto `precio_final(cantidad)`, cumpliendo el contrato de `Producto` sin necesidad de anotaciones artificiales como `@Override`.
+* **Polimorfismo puro y combos anidados:** Todas las subclases implementan el método abstracto `precio_final(cantidad)` satisfaciendo el contrato de `Producto`. En `ProductoCombo`, al invocar `c.precio_final(1)` sobre cada componente, el cálculo soporta combos anidados recursivamente de forma transparente y sin ningún condicional de tipo (`isinstance`), delegando el cálculo a cada componente polimórficamente.
 
 ---
 

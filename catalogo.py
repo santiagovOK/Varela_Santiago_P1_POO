@@ -134,8 +134,8 @@ class Producto(ABC):
     def precio_publicado(self) -> str:
         """Precio formateado para exhibición con dos decimales y unidad si aplica."""
         if self._unidad_venta is not None:
-            return f"$ {self._precio_base:.2f} / {self._unidad_venta.simbolo}"
-        return f"$ {self._precio_base:.2f}"
+            return f"$ {self.precio_base:.2f} / {self._unidad_venta.simbolo}"
+        return f"$ {self.precio_base:.2f}"
 
     @abstractmethod
     def precio_final(self, cantidad: float) -> float:
@@ -183,6 +183,76 @@ class ProductoPorPeso(Producto):
             )
 
 
+class ProductoCombo(Producto):
+    """Agrupación de productos promocionales por agregación (R2 y R3)."""
+
+    def __init__(
+        self,
+        nombre: str,
+        componentes: list[Producto] | tuple[Producto, ...],
+        descuento: float,
+        categoria: Categoria,
+        unidad_venta: UnidadMedida | None = None,
+        habilitado: bool = True,
+    ) -> None:
+        super().__init__(
+            nombre=nombre,
+            precio_base=0.0,
+            categoria=categoria,
+            unidad_venta=unidad_venta,
+            stock_cantidad=0.0,
+            habilitado=habilitado,
+        )
+
+        try:
+            componentes_lista = list(componentes)
+        except TypeError:
+            raise ValueError("Los componentes del combo deben proporcionarse en una colección iterable.")
+
+        if len(componentes_lista) < 2:
+            raise ValueError("Un combo debe tener al menos 2 componentes.")
+
+        try:
+            if type(descuento) is bool or not (0.0 <= float(descuento) < 1.0):
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError("El descuento del combo debe estar en el intervalo [0, 1).")
+
+        self._componentes: list[Producto] = list(componentes_lista)
+        self._descuento: float = float(descuento)
+
+    def componentes(self) -> tuple[Producto, ...]:
+        """Retorna los componentes del combo como tupla inmutable defensiva."""
+        return tuple(self._componentes)
+
+    @property
+    def descuento(self) -> float:
+        """Porcentaje de descuento aplicado sobre la suma de componentes (solo lectura)."""
+        return self._descuento
+
+    @property
+    def precio_base(self) -> float:
+        """Precio base derivado dinámicamente de sus componentes con descuento."""
+        return sum(c.precio_final(1) for c in self._componentes) * (1.0 - self._descuento)
+
+    @property
+    def disponible(self) -> bool:
+        """Un combo está disponible si está habilitado y todos sus componentes lo están."""
+        return self._habilitado and all(c.disponible for c in self._componentes)
+
+    def precio_final(self, cantidad: float) -> float:
+        """Calcula el precio final aplicando la fórmula con descuento y admitiendo anidamiento."""
+        try:
+            if type(cantidad) is bool or int(cantidad) != cantidad or cantidad < 1:
+                raise ValueError
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"La cantidad para ProductoCombo debe ser un valor entero >= 1, recibido: {cantidad}"
+            )
+        return self.precio_base * cantidad
+
+
 class Exportable(Protocol):
     def exportar(self) -> str:
         ...
+
