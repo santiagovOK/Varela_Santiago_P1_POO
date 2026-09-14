@@ -546,14 +546,19 @@ def exportar_catalogo(items: list[Exportable]) -> list[str]:
 ---
 
 ## Paso 7: Modelado UML y Demo Ejecutable
-* **Estado:** [Pendiente]
+* **Estado:** [Completo]
 * **Archivo(s) a modificar:** `uml/modelo_final.md` y `main.py`
 * **Clase(s) a crear:** Ninguna (script ejecutable `main.py` y diagrama UML)
 * **Requerimientos:** R5 (Diagrama UML final y demo ejecutable)  
 * **Historias de Usuario:** Criterios generales y preguntas de defensa (sección 6.3)
 
-### 7.1 Diagrama UML final (`uml/modelo_final.md`) - [Pendiente]
+### 7.1 Diagrama UML final (`uml/modelo_final.md`) - [Completo]
 * **Objetivo:** Reflejar el diseño final exacto en sintaxis Mermaid, mostrando composición (`*--`), agregación (`o--`), asociación (`-->`), realización de Protocol (`..|>`) y la resolución de `ProductoDestacado`.
+* **Resolución técnica:** Diagrama modelado en [uml/modelo_final.md](/uml/modelo_final.md) reflejando:
+  - Eliminación de la clase `ProductoDestacado` y la relación de herencia espuria.
+  - Incorporación de `#_orden_vidriera int`, `+orden_vidriera int`, `+es_destacado bool`, `+destacar(orden int)` y `+quitar_destacado()` en `Producto`.
+  - Inclusión de properties derivadas en `ProductoCombo`: `+descuento float`, `+precio_base float` y `+disponible bool`.
+  - Especificación de las relaciones estructurales con sus multiplicidades exactas y explicación del ciclo de vida de cada una.
 
 ### 7.2 Script ejecutable (`main.py`) - [Completo]
 * **Objetivo:** Demostrar en ejecución todas las reglas y decisiones requeridas para el video de defensa:
