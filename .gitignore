@@ -3,6 +3,7 @@
 
 # ===== Bytecode y caché de Python =====
 __pycache__/
+__pycache__
 *.py[cod]
 *$py.class
 
@@ -20,10 +21,6 @@ dist/
 # ===== Ruido de editor / sistema operativo =====
 .DS_Store
 Thumbs.db
-
-# ===== NO ignorar a propósito =====
-# pyproject.toml y poetry.lock se mantienen TRACKED: el lockfile
-# garantiza reproducibilidad (poetry lock), que es uno de los objetivos del proyecto.
 
 assets/__pycache__/
 

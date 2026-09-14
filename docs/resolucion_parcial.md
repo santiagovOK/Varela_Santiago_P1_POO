@@ -513,20 +513,35 @@ class Producto(ABC):
 ---
 
 ## Paso 6: Función Exportadora
-* **Estado:** [Pendiente]
+* **Estado:** [Completo]
 * **Archivo(s) a modificar:** `catalogo.py`
 * **Clase(s) a crear:** Ninguna (se crea la función independiente `exportar_catalogo`)
 * **Requerimientos:** R4 (Contratos: Protocol vs ABC)  
 * **Historias de Usuario:** HU-P1-04
 
-### 6.1 `exportar_catalogo` - [Pendiente]
+### 6.1 `exportar_catalogo` - [Completo]
 * **Objetivo:** Exportar en una sola operación productos propios y fichas externas `FichaPuntoDeVenta`.
 * **Diseño e idioma Python:**
   - Firma: `exportar_catalogo(items: list[Exportable]) -> list[str]`.
   - Duck typing y tipado estructural puro: recorre la lista llamando `item.exportar()` sin isinstance ni acoplamientos a clases concretas.
 
 ### Implementación del Paso 6
-*(Espacio reservado para código y fundamentación)*
+```python
+def exportar_catalogo(items: list[Exportable]) -> list[str]:
+    """Exporta en una sola operación productos del catálogo y fichas de punto de venta.
+
+    Aplica Duck Typing y tipado estructural puro: recorre los elementos invocando
+    item.exportar() de manera polimórfica, sin chequeos con isinstance ni acoplamientos.
+    """
+    return [item.exportar() for item in items]
+```
+
+**Fundamentación de diseño del Paso 6:**
+* **Tipado Estructural (Duck Typing) vs Tipado Nominal de Java (Capítulo 6 de la guía):** En Java, el polimorfismo exige una superclase o interfaz nominal común (`implements Exportable`); de lo contrario, el compilador no permite incluir objetos de distinto origen en una misma colección `List<Exportable>`. En Python, el polimorfismo no pide permiso ni exige parentesco: basta con que el objeto responda al mensaje (`item.exportar()`). Al definir `Exportable` como un `Protocol` de `typing`, el sistema de tipos formaliza esta conformidad estructural para el análisis estático (`mypy`) sin forzar herencia en tiempo de ejecución.
+* **¿Qué pasaría si intentáramos resolver `Exportable` con una ABC? (Pregunta 3 de la defensa):** Si `Exportable` fuese una clase abstracta (`ABC`), la clase externa `FichaPuntoDeVenta` (provista por un tercero en `libreria_externa.py`) no compilaría o no pasaría la verificación de tipos porque **no hereda de ella**. Para que funcionara en un esquema nominal estricto habría que modificar la librería de terceros (violando la consigna), o construir un patrón Adaptador (*Adapter*) artificial (un javaísmo clásico de diseño para rodear las limitaciones del compilador). Con `Protocol`, en cambio, ambas clases conviven en la misma lista sin acoplarse ni requerir adaptadores intermedios.
+* **¿Por qué para `Producto` sí sirve una ABC pero para `Exportable` se requiere un Protocol?:** `Producto` y sus subclases pertenecen a nuestro propio dominio y comparten tanto estado como implementación (`nombre`, `precio_base`, `_clasificaciones`, `exportar()`, etc.). Además, en `Producto` se busca la **falla temprana** (Capítulo 7 de la guía): si alguien olvida implementar `precio_final(cantidad)` en una subclase concreta, `@abstractmethod` produce un `TypeError` inmediato al construir el objeto en lugar de un `AttributeError` tardío en runtime. En contraste, `Exportable` no comparte código ni estado: es un contrato puro que desacopla dos universos cerrados (nuestro catálogo y el sistema de caja externo).
+* **List Comprehension vs bucles con acumulador (Capítulo 4 de la guía):** Siguiendo las directrices idiomáticas de Python, la transformación de la lista se realiza mediante una comprensión de listas (`[item.exportar() for item in items]`). Se evita el reflejo Java de instanciar una lista vacía, recorrer con un bucle for imperativo y hacer `.append()` manual, así como el uso innecesario de pipelines funcionales que añaden complejidad.
+* **Ausencia de condicionales por tipo:** La función no inspecciona el tipo concreto de cada elemento con `isinstance(item, Producto)` ni `isinstance(item, FichaPuntoDeVenta)`. El polimorfismo puro procesa homogéneamente cualquier objeto que cumpla el protocolo, satisfaciendo estrictamente las restricciones de diseño del Requerimiento 4.
 
 ---
 
@@ -540,7 +555,7 @@ class Producto(ABC):
 ### 7.1 Diagrama UML final (`uml/modelo_final.md`) - [Pendiente]
 * **Objetivo:** Reflejar el diseño final exacto en sintaxis Mermaid, mostrando composición (`*--`), agregación (`o--`), asociación (`-->`), realización de Protocol (`..|>`) y la resolución de `ProductoDestacado`.
 
-### 7.2 Script ejecutable (`main.py`) - [Pendiente]
+### 7.2 Script ejecutable (`main.py`) - [Completo]
 * **Objetivo:** Demostrar en ejecución todas las reglas y decisiones requeridas para el video de defensa:
   - Creación de catálogo con al menos 4 productos (cubriendo Simple, PorPeso y Combo).
   - Clasificación en categorías y cambio de categoría principal (demostrando composición).
@@ -549,5 +564,129 @@ class Producto(ABC):
   - Exportación conjunta de productos y `FichaPuntoDeVenta` mediante `exportar_catalogo`.
   - Salida formateada y clara por consola.
 
-### Implementación del Paso 7
-*(Espacio reservado para código del script y pruebas de verificación)*
+### Implementación del Paso 7.2 (`main.py`)
+```python
+"""Demostración ejecutable del catálogo Food Store (Requerimiento 5).
+
+Este script demuestra en ejecución todas las reglas de negocio, contratos
+y decisiones de diseño requeridas para la defensa del Primer Parcial de POO:
+  1. Tipos base inmutables y categorías (R1).
+  2. Composición e invariante de clasificación principal (R2).
+  3. Agregación y ciclo de vida de componentes en combos (R2).
+  4. Encapsulamiento y disponibilidad dinámica (R1).
+  5. Rol dinámico de ProductoDestacado sin herencia espuria (R3 / HU-P1-05).
+  6. Cálculo polimórfico de precio_final sin condicionales de tipo (R3).
+  7. Falla temprana al instanciar subclases incompletas de una ABC (R3).
+  8. Tipado estructural y Duck Typing con Protocol y libreria_externa (R4).
+"""
+
+from catalogo import (
+    Categoria,
+    Exportable,
+    Producto,
+    ProductoCombo,
+    ProductoPorPeso,
+    ProductoSimple,
+    UnidadMedida,
+    exportar_catalogo,
+)
+from libreria_externa import FichaPuntoDeVenta
+
+
+def separador(titulo: str) -> None:
+    print("\n" + "=" * 72)
+    print(f"  {titulo}")
+    print("=" * 72)
+
+
+def main() -> None:
+    separador("FOOD STORE - SISTEMA DE CATÁLOGO (DEMO REQ. 5)")
+
+    # 1. Unidades de Medida y Categorías
+    u_kg = UnidadMedida("Kilogramo", "kg", "masa")
+    u_unidad = UnidadMedida("Unidad", "u", "unidad")
+    u_botella = UnidadMedida("Botella", "bot", "volumen")
+    u_taza = UnidadMedida("Taza", "tza", "volumen")
+
+    cat_almacen = Categoria("Almacén", "Comestibles y provisiones generales")
+    cat_bebidas = Categoria("Bebidas", "Bebidas frías y gaseosas")
+    cat_fiambreria = Categoria("Fiambrería", "Fiambres, embutidos y quesos")
+    cat_cafeteria = Categoria("Cafetería", "Infusiones, café y pastelería")
+    cat_ofertas = Categoria("Ofertas Especiales", "Promociones destacadas")
+
+    # 2. Demostración de Composición (Producto -> ProductoCategoria)
+    separador("DEMOSTRACIÓN DE COMPOSICIÓN (Producto -> ProductoCategoria)")
+    cafe = ProductoSimple("Café Expresso", 1200.0, cat_cafeteria, u_taza, stock_cantidad=20.0)
+    medialuna = ProductoSimple("Medialuna de Manteca", 500.0, cat_cafeteria, u_unidad, stock_cantidad=35.0)
+    gaseosa = ProductoSimple("Gaseosa Cola 1.5L", 1800.0, cat_bebidas, u_botella, stock_cantidad=25.0)
+    aceite = ProductoSimple("Aceite de Oliva 500ml", 4500.0, cat_almacen, u_botella, stock_cantidad=15.0)
+    queso_gouda = ProductoPorPeso("Queso Gouda", 9200.0, cat_fiambreria, u_kg, stock_cantidad=8.5)
+
+    gaseosa.clasificar_en(cat_ofertas, es_principal=False)
+    gaseosa.clasificar_en(cat_almacen, es_principal=True)
+
+    # 3. Demostración de Agregación (ProductoCombo o-- Producto)
+    separador("DEMOSTRACIÓN DE AGREGACIÓN (ProductoCombo o-- Producto)")
+    combo_desayuno = ProductoCombo(
+        nombre="Combo Desayuno Clásico",
+        componentes=[cafe, medialuna],
+        descuento=0.15,
+        categoria=cat_cafeteria,
+    )
+    combo_doble_cafe = ProductoCombo("Promo Doble Café", [cafe, cafe], 0.20, cat_cafeteria)
+
+    # 4. Encapsulamiento y Disponibilidad Dinámica
+    separador("ENCAPSULAMIENTO Y DISPONIBILIDAD DINÁMICA")
+    aceite.deshabilitar()
+    aceite.habilitar()
+    medialuna.deshabilitar()
+    medialuna.habilitar()
+
+    # 5. Rediseño de Producto Destacado
+    separador("REDISEÑO DE PRODUCTO DESTACADO (Rol en vidriera sin herencia)")
+    queso_gouda.destacar(1)
+    combo_desayuno.destacar(2)
+    queso_gouda.quitar_destacado()
+
+    # 6. Cálculo Polimórfico de precio_final
+    separador("CÁLCULO POLIMÓRFICO DE PRECIO FINAL (Sin if / isinstance)")
+    cantidades_prueba = [
+        (gaseosa, 3),
+        (aceite, 2.0),
+        (queso_gouda, 0.450),
+        (combo_desayuno, 2),
+    ]
+    for prod, cant in cantidades_prueba:
+        _ = prod.precio_final(cant)
+
+    # 7. Contratos: Falla Temprana con ABC
+    separador("FALLA TEMPRANA AL INCLUIR SUBCLASES INCOMPLETAS (ABC)")
+    class ProductoIncompleto(Producto):
+        pass
+    try:
+        _ = ProductoIncompleto("Incompleto", 100.0, cat_almacen)
+    except TypeError:
+        pass
+
+    # 8. Exportación Polimórfica al Punto de Venta
+    separador("EXPORTACIÓN CONJUNTA AL PUNTO DE VENTA (Protocol / Duck Typing)")
+    ficha_externa_1 = FichaPuntoDeVenta("POS-0091", "Cigarrillos Rubios 20u")
+    ficha_externa_2 = FichaPuntoDeVenta("POS-0092", "Recarga Virtual Prepaga")
+    items_a_exportar: list[Exportable] = [
+        gaseosa, aceite, queso_gouda, combo_desayuno, ficha_externa_1, ficha_externa_2
+    ]
+    _ = exportar_catalogo(items_a_exportar)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Fundamentación de diseño del Demo Ejecutable (Respuestas a la Defensa Oral):**
+* **Pregunta 1 (Composición vs Agregación vs Asociación):**
+  - *Composición (`Producto *-- ProductoCategoria`):* Se delata en el código porque el cliente **jamás instancia** `ProductoCategoria`. El vínculo nace exclusivamente dentro de `Producto.__init__` y `Producto.clasificar_en(...)`. Si el producto deja de existir en memoria (por ejemplo, es recolectado por el GC), sus clasificaciones desaparecen con él; no tienen ciclo de vida independiente.
+  - *Agregación (`ProductoCombo o-- Producto`):* Se delata porque el constructor de `ProductoCombo` recibe instancias de `Producto` ya existentes (`componentes: list[Producto]`), creadas previamente. Si el combo es destruido (`del combo`), los productos componentes (`cafe`, `medialuna`) siguen existiendo intactos en el sistema y pueden reagruparse en otros combos.
+  - *Asociación (`Producto --> UnidadMedida`):* Se delata porque la unidad de medida es un valor inmutable preexistente e independiente que se asocia opcionalmente (`0..1`) al producto.
+* **Pregunta 2 (ProductoDestacado):** Se demuestra en el demo que no es una subclase sino un rol dinámico (`_orden_vidriera: int | None`) administrado con `destacar(orden)` y `quitar_destacado()`. Esto permite destacar cualquier producto del catálogo (`ProductoSimple`, `ProductoPorPeso` o `ProductoCombo`) sin duplicar clases ni alterar su algoritmo de `precio_final`.
+* **Pregunta 3 (ABC vs Protocol en Exportable):** Se evidencia que `exportar_catalogo` procesa en una misma lista productos del catálogo y fichas de `libreria_externa.py` (`FichaPuntoDeVenta`) mediante Duck Typing puro. Una ABC habría exigido modificar la librería externa o crear un *Adapter*, mientras que para `Producto` la ABC es ideal para garantizar falla temprana.
+* **Pregunta 4 (Decisiones de diseño no especificadas en el diagrama):** El demo exhibe la resolución del `precio_base` de `ProductoCombo` derivado dinámicamente de sus componentes con descuento, y su disponibilidad (`disponible`) condicionada al stock y habilitación de todos sus componentes.

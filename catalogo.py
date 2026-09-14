@@ -298,3 +298,12 @@ class Exportable(Protocol):
     def exportar(self) -> str:
         ...
 
+
+def exportar_catalogo(items: list[Exportable]) -> list[str]:
+    """Exporta en una sola operación productos del catálogo y fichas de punto de venta.
+
+    Aplica Duck Typing y tipado estructural: recorre los elementos invocando
+    item.exportar() de manera polimórfica.
+    """
+    return [item.exportar() for item in items]
+
