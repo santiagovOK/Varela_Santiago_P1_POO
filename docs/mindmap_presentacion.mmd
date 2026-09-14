@@ -1,3 +1,4 @@
+%%{init: {'themeVariables': { 'fontSize': '14px' }}}%%
 flowchart LR
     %% ==========================================
     %% DEFINICIÓN DE ESTILOS CROMÁTICOS
@@ -33,6 +34,8 @@ flowchart LR
     classDef b5Sub fill:#fefce8,stroke:#eab308,stroke-width:1.5px,color:#713f12,font-weight:600;
     classDef b5Line fill:#fef9c3,stroke:#facc15,stroke-width:1px,color:#854d0e;
     classDef b5Desc fill:#ffffff,stroke:#fde047,stroke-width:1px,color:#713f12;
+
+    classDef codeBlock fill:#f8fafc,stroke:#64748b,stroke-width:1.5px,color:#0f172a,font-family:monospace,font-size:11px,text-align:left;
 
     %% NODO CENTRAL (EXTREMO IZQUIERDO)
     ROOT(["Food Store<br/><b>Defensa Parcial POO</b><br/><i>Santiago Varela</i>"]):::rootStyle
@@ -77,24 +80,27 @@ flowchart LR
     ROOT --> B2["Pregunta 1 (§6.3): Relaciones Estructurales (R2)"]:::b2Head
 
     B2 --> B2_1["Composición: Producto *-- ProductoCategoria"]:::b2Sub
-    B2_1 --> B2_1_code["Líneas delatoras: catalogo.py (85-87 y 128)"]:::b2Line
+    B2_1 --> B2_1_code["Líneas delatoras: catalogo.py (85-87 y 128 en Producto)"]:::b2Line
     B2_1_code --> B2_1_desc1["¿Quién fabrica la parte?: El cliente nunca hace ProductoCategoria(); el todo la instancia adentro encapsulando el vínculo."]:::b2Desc
+    B2_1_desc1 --> B2_1_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:85 y 128 · Clase Producto<br/># El todo instancia la parte:<br/>self._clasificaciones = [<br/>  ProductoCategoria(categoria, es_principal=True)<br/>]<br/><br/>def clasificar_en(self, cat, es_principal=False):<br/>  # Encapsulamiento del ciclo de vida:<br/>  self._clasificaciones.append(<br/>    ProductoCategoria(cat, es_principal)<br/>  )</code></div>"]:::codeBlock
     B2_1 --> B2_1_life["Ciclo de vida dependiente: La parte muere con el todo"]:::b2Line
     B2_1_life --> B2_1_desc2["¿Qué le pasa a la parte?: No tiene identidad fuera del producto; si el producto es eliminado por el GC, sus categorías se destruyen."]:::b2Desc
-    B2_1 --> B2_1_encap["Encapsulamiento: categorias() tupla inmutable (L.130)"]:::b2Line
+    B2_1 --> B2_1_encap["Encapsulamiento: categorias() tupla inmutable (L.130 en Producto)"]:::b2Line
     B2_1_encap --> B2_1_desc3["Retorna tuple(...) defensiva para impedir inyecciones de vínculos desde afuera y asegura exactamente 1 categoría principal."]:::b2Desc
 
     B2 --> B2_2["Agregación: ProductoCombo o-- Producto"]:::b2Sub
-    B2_2 --> B2_2_code["Líneas delatoras: catalogo.py (232 y 263)"]:::b2Line
+    B2_2 --> B2_2_code["Líneas delatoras: catalogo.py (232 y 263 en ProductoCombo)"]:::b2Line
     B2_2_code --> B2_2_desc1["¿Quién fabrica la parte?: El combo recibe partes ya construidas por parámetro; existen antes de que el combo sea creado."]:::b2Desc
+    B2_2_desc1 --> B2_2_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:232 y 263 · Clase ProductoCombo<br/># Partes inyectadas preexistentes:<br/>def __init__(self, componentes, ...):<br/>  self._componentes = list(componentes)<br/><br/>def componentes(self) -> tuple[Producto, ...]:<br/>  # Retorno defensivo inmutable:<br/>  return tuple(self._componentes)</code></div>"]:::codeBlock
     B2_2 --> B2_2_life["Ciclo de vida autónomo: Las partes sobreviven al combo"]:::b2Line
     B2_2_life --> B2_2_desc2["¿Qué le pasa a la parte?: Si el combo deja de existir, café y medialuna siguen vivos, se venden solos o en otros combos (reagrupables)."]:::b2Desc
-    B2_2 --> B2_2_def["Defensa: componentes() tupla inmutable (L.266)"]:::b2Line
+    B2_2 --> B2_2_def["Defensa: componentes() tupla inmutable (L.266 en ProductoCombo)"]:::b2Line
     B2_2_def --> B2_2_desc3["Copia defensiva en constructor y retorno inmutable protegen la integridad de los componentes frente a mutaciones externas."]:::b2Desc
 
     B2 --> B2_3["Asociación: Producto --> UnidadMedida"]:::b2Sub
-    B2_3 --> B2_3_code["Líneas delatoras: catalogo.py (6-10 y 83)"]:::b2Line
+    B2_3 --> B2_3_code["Líneas delatoras: catalogo.py (6-10 en UnidadMedida y 83 en Producto)"]:::b2Line
     B2_3_code --> B2_3_desc1["Colaboración débil: Objeto inmutable (@dataclass frozen) compartido por referencia sin acoplamiento de ciclo de vida."]:::b2Desc
+    B2_3_desc1 --> B2_3_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:6-10 (UnidadMedida) y 83 (Producto)<br/>@dataclass(frozen=True)<br/>class UnidadMedida:<br/>  nombre: str; simbolo: str; tipo: str<br/><br/># Multiplicidad 0..1 opcional en Producto:<br/>self._unidad_venta: UnidadMedida | None = unidad_venta</code></div>"]:::codeBlock
     B2_3 --> B2_3_life["Multiplicidad opcional 0..1 y ciclo independiente"]:::b2Line
     B2_3_life --> B2_3_desc2["Un producto sin unidad es válido; las unidades de medida existen en el sistema antes y después de cualquier producto."]:::b2Desc
 
@@ -116,6 +122,7 @@ flowchart LR
     B3 --> B3_3["Solución implementada y reemplazo"]:::b3Sub
     B3_3 --> B3_3_code["Atributo _orden_vidriera en Producto base (L.84)"]:::b3Line
     B3_3_code --> B3_3_desc1["Se modela como estado: métodos destacar(orden) y quitar_destacado() (L.90-103) con properties orden_vidriera y es_destacado."]:::b3Desc
+    B3_3_desc1 --> B3_3_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:84 y 90-103 · Clase Producto<br/>self._orden_vidriera: int | None = None<br/><br/>def destacar(self, orden: int) -> None:<br/>  # Estado mutable en runtime:<br/>  self._orden_vidriera = int(orden)<br/><br/>def quitar_destacado(self) -> None:<br/>  self._orden_vidriera = None</code></div>"]:::codeBlock
     B3_3 --> B3_3_cap["Capacidad universal para todo el catálogo"]:::b3Line
     B3_3_cap --> B3_3_desc2["Cualquier producto entra y sale de vidriera en tiempo de ejecución sin cambiar de clase ni alterar su algoritmo económico."]:::b3Desc
 
@@ -127,6 +134,7 @@ flowchart LR
     B4 --> B4_1["Exportable como typing.Protocol (L.297-299)"]:::b4Sub
     B4_1 --> B4_1_duck["Tipado estructural puro (Duck Typing en Python)"]:::b4Line
     B4_1_duck --> B4_1_desc1["Basta que el objeto tenga def exportar(self) -> str sin exigir ancestro común en el Method Resolution Order (MRO)."]:::b4Desc
+    B4_1_desc1 --> B4_1_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:297-308 · Protocol Exportable<br/>class Exportable(Protocol):<br/>  def exportar(self) -> str: ...<br/><br/>def exportar_catalogo(items: list[Exportable]):<br/>  # Duck typing sin acoplamiento nominal:<br/>  return [i.exportar() for i in items]</code></div>"]:::codeBlock
     B4_1 --> B4_1_lib["libreria_externa.py (FichaPuntoDeVenta) queda intacta"]:::b4Line
     B4_1_lib --> B4_1_desc2["exportar_catalogo() (L.302-308) procesa listas heterogéneas con productos y fichas externas sin acoplamiento nominal."]:::b4Desc
 
@@ -141,6 +149,7 @@ flowchart LR
     B4_3_reuse --> B4_3_desc1["Producto provee estado real (nombre, precio_base, clasificaciones) y lógica compartida (habilitar, deshabilitar, exportar)."]:::b4Desc
     B4_3 --> B4_3_failfast["Garantía de Falla Temprana (Fail-Fast al construir)"]:::b4Line
     B4_3_failfast --> B4_3_desc2["Si una subclase omite precio_final, TypeError revienta inmediatamente en __init__, impidiendo bugs tardíos en venta."]:::b4Desc
+    B4_3_desc2 --> B4_3_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:43 y 146 · Clase Producto (ABC)<br/>class Producto(ABC):<br/>  @abstractmethod<br/>  def precio_final(self, cant: float) -> float:<br/>    # Fail-Fast en __init__ si falta implementar<br/>    pass</code></div>"]:::codeBlock
 
     %% ==========================================
     %% BLOQUE 6: PREGUNTA 4 (§6.3) - DECISIONES PROPIAS VS DIAGRAMA
@@ -152,17 +161,20 @@ flowchart LR
     B5_1_items --> B5_1_desc["UnidadMedida frozen, Categoria inmutable, ProductoCategoria con bool principal, subclases Simple/PorPeso y Protocol Exportable."]:::b5Desc
 
     B5 --> B5_2["Decisión: precio_base dinámico en ProductoCombo"]:::b5Sub
-    B5_2 --> B5_2_calc["Property derivada calculada en tiempo real (L.276-278)"]:::b5Line
+    B5_2 --> B5_2_calc["Property derivada calculada en tiempo real (L.276-278 en ProductoCombo)"]:::b5Line
     B5_2_calc --> B5_2_desc["Calcula sum(componentes) * (1 - descuento); ante cambios de precio en componentes, el combo se sincroniza automáticamente."]:::b5Desc
+    B5_2_desc --> B5_2_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:276-278 · Clase ProductoCombo<br/>@property<br/>def precio_base(self) -> float:<br/>  subtotal = sum(c.precio_base for c in self._componentes)<br/>  return subtotal * (1.0 - self._descuento)</code></div>"]:::codeBlock
 
     B5 --> B5_3["Decisión: stock_cantidad y disponibilidad derivada"]:::b5Sub
-    B5_3 --> B5_3_stock["Sin inventario físico propio en depósito (L.281-283)"]:::b5Line
+    B5_3 --> B5_3_stock["Sin inventario físico propio en depósito (L.281-283 en ProductoCombo)"]:::b5Line
     B5_3_stock --> B5_3_desc["Disponible si está habilitado y all(c.disponible for c in self._componentes); un combo no almacena cajas físicas propias."]:::b5Desc
+    B5_3_desc --> B5_3_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:281-283 · Clase ProductoCombo<br/>@property<br/>def disponible(self) -> bool:<br/>  return self.habilitado and all(<br/>    c.disponible for c in self._componentes<br/>  )</code></div>"]:::codeBlock
 
     B5 --> B5_4["Decisión: Alternancia de categoría principal"]:::b5Sub
-    B5_4 --> B5_4_inv["Método protegido _marcar_principal(False)"]:::b5Line
+    B5_4 --> B5_4_inv["Método protegido _marcar_principal(False) (L.41 en ProductoCategoria y L.126 en Producto)"]:::b5Line
     B5_4_inv --> B5_4_desc["clasificar_en() desmarca la categoría previa asegurando la invariante de exactamente una principal sin setters públicos."]:::b5Desc
 
     B5 --> B5_5["Decisión: Validaciones idiomáticas EAFP (sin javaísmos)"]:::b5Sub
-    B5_5 --> B5_5_eafp["Manejo idiomático con try/except e int()/float()"]:::b5Line
+    B5_5 --> B5_5_eafp["Manejo idiomático con try/except e int()/float() (en Producto y ProductoCombo)"]:::b5Line
     B5_5_eafp --> B5_5_desc["Rechaza booleanos en numéricos y captura tipos o rangos inválidos con ValueError sin caer en isinstance masivos simulando Java."]:::b5Desc
+    B5_5_desc --> B5_5_snip["<div style='min-width:480px; white-space:pre-wrap; text-align:left;'><code># catalogo.py:92-95 · Clase Producto (método destacar)<br/># EAFP + Descarte de trampa bool:<br/>if type(orden) is bool or int(orden) != orden or orden &lt; 1:<br/>  raise ValueError(...)<br/>self._orden_vidriera = int(orden)</code></div>"]:::codeBlock
