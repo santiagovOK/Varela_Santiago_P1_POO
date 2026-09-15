@@ -7,10 +7,10 @@
 
 # Links de relevancia para la evaluación
 
-**Link al repositorio en Github:**https://github.com/santiagovOK/Varela_Santiago_P1_POO
+**Link al repositorio en Github:** https://github.com/santiagovOK/Varela_Santiago_P1_POO
 
-**- [Video explicativo](/link_video.txt)**
-**- Video explicativo (link B):**https://drive.google.com/file/d/1JJP7ywF6ehlluMDa_UzyAwbKYel_-svT/view?usp=sharing
+- **[Video explicativo](/link_video.txt)**
+- **Video explicativo (link B):** https://drive.google.com/file/d/1JJP7ywF6ehlluMDa_UzyAwbKYel_-svT/view?usp=sharing
 
 Resumen breve de resolución de cada una de las consignas (principalmente para guiarme yo). Pueden verlo aquí: [docs/resolucion_parcial.md](docs/resolucion_parcial.md)
 
@@ -69,4 +69,4 @@ El proyecto está desarrollado exclusivamente con la biblioteca estándar de **P
 
 ## Licencia
 
-Este proyecto se distribuye bajo la [Licencia MIT](LICENCE.TXT).
+Este proyecto se distribuye bajo la [Licencia MIT](LICENCE.txt).
