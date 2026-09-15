@@ -7,12 +7,10 @@
 
 # Links de relevancia para la evaluación
 
-**Link al repositorio en Github:**
+**Link al repositorio en Github:**https://github.com/santiagovOK/Varela_Santiago_P1_POO
 
 **- [Video explicativo](/link_video.txt)**
-**- Video explicativo (link B):**
-
-**- Presentación utilizada en el video:**
+**- Video explicativo (link B):**https://drive.google.com/file/d/1JJP7ywF6ehlluMDa_UzyAwbKYel_-svT/view?usp=sharing
 
 Resumen breve de resolución de cada una de las consignas (principalmente para guiarme yo). Pueden verlo aquí: [docs/resolucion_parcial.md](docs/resolucion_parcial.md)
 
@@ -64,13 +62,9 @@ Varela_Santiago_P1_POO/
 
 El proyecto está desarrollado exclusivamente con la biblioteca estándar de **Python 3.12+** y no requiere ninguna dependencia externa ni la creación de entornos virtuales:
 
-1. **Ejecutar la demostración interactiva:**
+**Ejecutar la demostración interactiva:**
    ```bash
    python3 main.py
-   ```
-2. **Ejecutar la suite de pruebas unitarias:**
-   ```bash
-   python3 test/test_catalogo.py
    ```
 
 ## Licencia
